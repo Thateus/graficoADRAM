@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard de Embarques</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Estilos Gerais (Design "Dahora") */
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        
+        /* O Container Principal (A caixa branca) */
+        .dashboard-container {
+            width: 90%;
+            max-width: 1200px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            display: flex;
+            overflow: hidden; /* Para os cantos arredondados */
+            height: 80vh; /* Altura da janela */
+        }
+
+        /* Área do Gráfico (75% da largura) */
+        .chart-area {
+            flex: 3;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Área Lateral de Estatísticas (25% da largura) */
+        .sidebar {
+            flex: 1;
+            background-color: #f8f9fa;
+            border-left: 1px solid #e0e0e0;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        h2 { margin-top: 0; color: #444; font-size: 24px; margin-bottom: 20px; }
+        h3 { color: #666; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #ddd; padding-bottom: 10px;}
+
+        /* Cartões de Totais */
+        .stat-card {
+            background: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-left: 5px solid #ccc; /* Cor padrão */
+        }
+
+        .stat-title { font-size: 14px; color: #888; margin-bottom: 5px; font-weight: bold; text-transform: uppercase; }
+        .stat-value { font-size: 24px; font-weight: bold; color: #333; }
+
+        /* Cores específicas para as bordas dos cartões */
+        .card-a { border-left-color: rgba(54, 162, 235, 1); }
+        .card-b { border-left-color: rgba(255, 159, 64, 1); }
+        .card-c { border-left-color: rgba(75, 192, 192, 1); }
+        .card-total { border-left-color: #333; background-color: #333; color: white; }
+        .card-total .stat-title { color: #ccc; }
+        .card-total .stat-value { color: white; }
+
+        /* Ajuste para celular (responsivo) */
+        @media (max-width: 768px) {
+            .dashboard-container { flex-direction: column; height: auto; }
+            .sidebar { border-left: none; border-top: 1px solid #e0e0e0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-container">
+    <div class="chart-area">
+        <h2>📊 Produção Anual</h2>
+        <div style="position: relative; height: 100%; width: 100%;">
+            <canvas id="meuGrafico"></canvas>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <h3>Resumo Anual</h3>
+        
+        <div class="stat-card card-a">
+            <div class="stat-title">Total Flocado</div>
+            <div class="stat-value" id="totalA">0</div>
+        </div>
+
+        <div class="stat-card card-b">
+            <div class="stat-title">Total Flocao Milho</div>
+            <div class="stat-value" id="totalB">0</div>
+        </div>
+
+        <div class="stat-card card-c">
+            <div class="stat-title">Total Flocao Arroz</div>
+            <div class="stat-value" id="totalC">0</div>
+        </div>
+
+        <div class="stat-card card-total">
+            <div class="stat-title">Total Geral</div>
+            <div class="stat-value" id="totalGeral">0</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- 1. SEUS DADOS AQUI ---
+    // Pode mudar os números à vontade, o gráfico e os totais atualizam sozinhos
+    const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    
+    const dadosProdA = [66697, 90202, 86689, 78357, 76610, 57261, 55535, 65161, 67486, 76232, 57695, 57235];
+    const dadosProdB = [177086, 150999, 215834, 215297, 217621, 187265, 166533, 190825, 172502, 240892, 206430, 161868];
+    const dadosProdC = [68044, 12829, 15847, 85345, 59454, 50759, 40650, 89036, 30135, 49717, 38205, 65307];
+    // --------------------------
+
+
+    // --- 2. CÁLCULO AUTOMÁTICO DOS TOTAIS ---
+    const somaA = dadosProdA.reduce((a, b) => a + b, 0);
+    const somaB = dadosProdB.reduce((a, b) => a + b, 0);
+    const somaC = dadosProdC.reduce((a, b) => a + b, 0);
+    const somaGeral = somaA + somaB + somaC;
+
+    // Colocando os valores na tela lateral
+    document.getElementById('totalA').innerText = somaA.toLocaleString();
+    document.getElementById('totalB').innerText = somaB.toLocaleString();
+    document.getElementById('totalC').innerText = somaC.toLocaleString();
+    document.getElementById('totalGeral').innerText = somaGeral.toLocaleString();
+
+
+    // --- 3. CRIAÇÃO DO GRÁFICO ---
+    const ctx = document.getElementById('meuGrafico').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: meses,
+            datasets: [
+                {
+                    label: 'Flocado',
+                    data: dadosProdA,
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4 // Barras arredondadas
+                },
+                {
+                    label: 'Flocao Milho',
+                    data: dadosProdB,
+                    backgroundColor: 'rgba(255, 159, 64, 0.7)',
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                },
+                {
+                    label: 'Flocao Arroz',
+                    data: dadosProdC,
+                    backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false, // Importante para preencher a área
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#f0f0f0' } // Grade suave
+                },
+                x: {
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
